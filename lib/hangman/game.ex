@@ -11,6 +11,12 @@ defmodule Hangman.Game do
     }
   end
 
+  @spec new_game(binary) :: %Hangman.Game{
+          game_state: :initializing,
+          letters: [binary],
+          turns_left: 7,
+          used: MapSet.t()
+        }
   def new_game(word) do
     %Hangman.Game{
       letters: word |> String.codepoints
@@ -38,9 +44,10 @@ defmodule Hangman.Game do
 
 
   def score_guess(game, _good_guess = true) do
-    letter_set = MapSet.new(game.letters)
-    MapSet.subset?(letter_set, game.used)
-    |> maybe_won
+    new_state = MapSet.new(game.letters)
+                |> MapSet.subset?(game.used)
+                |> maybe_won
+    %{game | game_state: new_state}
   end
 
   def score_guess(game = %{turns_left: turns_left }, _not_good_guess) do
@@ -51,8 +58,21 @@ defmodule Hangman.Game do
    end
 
   def tally(game) do
-    123
+    %{
+      game_state: game.game_state,
+      turns_left: game.turns_left,
+      letters: game.letters |> reveal_guessed(game.used)
+    }
   end
+
+  def reveal_guessed(letters, used) do
+    letters
+      |> Enum.map(fn letter -> reveal_letter(letter, MapSet.member?(used, letter)) end)
+  end
+
+  def reveal_letter(letter, _in_word = true), do: letter
+  def reveal_letter(letter, _not_in_word), do: "_"
+
 
   def maybe_won(true), do: :won
   def maybe_won(_), do: :good_guess
